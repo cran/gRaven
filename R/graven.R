@@ -1,98 +1,133 @@
-print.gRv<-function(x, ...)
+print.gRaven<-function(x, ...)
 {
-      cat('domain with slots:',names(x),'\n')
-      cat(length(x$nodes),'nodes:',x$nodes,fill=60)
-      cat(sum(sapply(x$parents,length)),'edges\n')
-      for(n in x$nodes) if(length(x$parents[[n]])>0) cat('  ',x$parents[[n]],'->',n,'\n')
+      cat("A gRaven domain with slots:",names(x),"\n")
+      cat(length(x$nodes),"nodes:",x$nodes,fill=60)
+      cat(sum(sapply(x$parents,length)),"edges:\n")
+      for(n in x$nodes) if(length(x$parents[[n]])>0) cat("  ",x$parents[[n]],"->",n,"\n")
       invisible(NULL)
+}
+
+summary.gRaven<-function(object, ...)
+{
+      cat('gRaven domain:\n')
+      res1<-if(!is.null(object$net)) object$net$isCompiled else FALSE
+      cat(paste0('    Compiled: the domain is ',ifelse(res1,'','not '),'compiled\n'))
+      res2<-if(!is.null(object$net)) object$net$isPropagated else FALSE
+      cat('  Propagated:',res2,'\n')
+# JT
+      JT<-if(!is.null(object$net)) object$net$rip$cliques else NULL
+      invisible(print(JT))
 }
 
 
 hugin.domain<-function () 
 {
 	e <- rlang::env( nodes=NULL, states=NULL, parents=NULL, cptables=NULL)
-	class(e)<-c("gRv","environment")
+	class(e)<-c("gRaven","environment")
 	e
 }
 
-clone.domain<-function(dom1)
+clone.domain<-function(domain)
 	{
-	dom2<-rlang::env_clone(dom1)
-	class(dom2)<-c("gRv","environment")
-	dom2
+	domain2<-rlang::env_clone(domain)
+	class(domain2)<-c("gRaven","environment")
+	domain2
 	}
 
-initialize.domain<-function(dom)
+initialize.domain<-function(domain)
 	{
-	if(is.null(dom$net)) return()
-	dom$net<-retractEvidence(dom$net)
-	dom$net$cache<-NULL
+	if(is.null(domain$net)) return()
+	domain$net<-retractEvidence(domain$net)
+	domain$net$cache<-NULL
 	}
 
-add.node<-function (dom, n, states, subtype) 
+add.node<-function (domain, name, category = c("chance", 
+    "decision", "utility", "function"), kind = c("discrete", "continuous", "other"), 
+    subtype, states) 
 {
+    category <- match.arg(category)
+    if(category!="chance") stop("gRaven does not yet handle category =",category)
+    kind <- match.arg(kind)
+    if(kind!="discrete") stop("gRaven does not yet handle kind =",kind)
     if (missing(states)) {
         if (subtype == "boolean") 
             states <- c(0, 1)
+		attr(states,"logical")<-c(FALSE,TRUE)
     }
     else {
         if (missing(subtype)) 
             subtype <- switch(mode(states), character = "labeled", 
                 numeric = "numbered", logical = "boolean")
     }
-    if (n %in% dom$nodes) 
-        stop(n, " already in domain\n")
-    dom$nodes <- c(dom$nodes, n)
-    dom$states <- c(dom$states, structure(list(states),names=n))
-    dom$parents <- c(dom$parents, structure(list(NULL),names=n))
+    if(mode(states)=="logical")  
+		{
+		attr(states,"logical")<-states
+		states[] <- c(0, 1)
+		}
+    if (name %in% domain$nodes) 
+        stop(name, " already in domain\n")
+    if(any(duplicated(states))) stop("states must be distinct")
+    
+    domain$nodes <- c(domain$nodes, name)
+    domain$states <- c(domain$states, structure(list(states), names = name))
+    domain$parents <- c(domain$parents, structure(list(NULL), names = name))
 }
 
-add.edge<-function(dom,child,parent)
+delete.node<-function (domain, name) 
 {
-if((!child%in%dom$nodes)||any(!parent%in%dom$nodes)) stop(child,'',parent,' not all already in domain\n')
-dom$parents[[child]]<-c(dom$parents[[child]],parent)
-dom$cptables[[child]]<-NULL
-}
-
-delete.node<-function (dom, n) 
-{
-    dom$nodes <- dom$nodes[dom$nodes != n]
-    dom$states[[n]] <- NULL
-    dom$parents[[n]] <- NULL
-    dom$cptables[[n]] <- NULL
-	for(m in dom$nodes) if(n%in%dom$parents[[m]]) 
+    domain$nodes <- domain$nodes[domain$nodes != name]
+    domain$states[[name]] <- NULL
+    domain$parents[[name]] <- NULL
+    domain$cptables[[name]] <- NULL
+	for(m in domain$nodes) if(name%in%domain$parents[[m]]) 
 	{
-	pars<-dom$parents[[m]]
-	pars<-pars[pars!=n]
-	if(length(pars)==0) dom$parents[m]<-list(NULL) else dom$parents[[m]]<-pars
-	dom$cptables[[m]]<-NULL
+	pars<-domain$parents[[m]]
+	pars<-pars[pars!=name]
+	if(length(pars)==0) domain$parents[m]<-list(NULL) else domain$parents[[m]]<-pars
+	domain$cptables[[m]]<-NULL
 	}
 }
 
-delete.edge<-function (dom, n, p) 
+add.edge<-function(domain,child,parent)
 {
-    pars <- dom$parents[[n]]
-    pars <- pars[pars != p]
-    if (length(pars) == 0) 
-        dom$parents[n] <- list(NULL)
-    else dom$parents[[n]] <- pars
-    dom$cptables[[n]] <- NULL
+if((!child%in%domain$nodes)||any(!parent%in%domain$nodes)) stop(child,"",parent," not all already in domain\n")
+domain$parents[[child]]<-c(domain$parents[[child]],parent)
+domain$cptables[[child]]<-NULL
 }
 
-get.table<-function (dom,n) 
+delete.edge<-function (domain, child, parent) 
 {
-# delivers CPT as a data.frame, either by extracting it if it already exists in dom$cptables, 
+    pars <- setdiff(domain$parents[[child]],parent)
+    if (length(pars) == 0) 
+        domain$parents[child] <- list(NULL)
+    else domain$parents[[child]] <- pars
+    domain$cptables[[child]] <- NULL
+}
+
+get.table<-function (domain,n,type = c("cpt", "experience", 
+    "fading"), class = c("data.frame", "table", 
+    "ftable", "numeric")) 
+{
+# delivers CPT as a data.frame, either by extracting it if it already exists in domain$cptables, 
 # or initialised with freq=1
-z<-dom$cptables
+type <- match.arg(type)
+if(type!="cpt") stop("gRaven does not yet handle type =",type)
+class <- match.arg(class)
+if(class!="data.frame") stop("gRaven does not yet handle class =",class)
+if(!is.null(domain$net))
+{
+return(as.data.frame.table(domain$net$cpt[[n]]))
+}
+z<-domain$cptables
 if(is.null(z)||is.null(z[[n]])) 
 {
         Freq<-1
-        vpa<-c(n,dom$parents[[n]])
+        vpa<-c(n,domain$parents[[n]])
 } else {
         Freq<-z[[n]]
         vpa<-names(dimnames(Freq))
 }
-allstates<-dom$states[vpa]
+allstates<-domain$states[vpa]
 nlev<-unlist(lapply(allstates,length))
 k<-cumprod(nlev)
 lk<-length(k); length<-k[lk]; k<-c(1,k[-lk])
@@ -102,31 +137,34 @@ for(i in 1:lk)
         if(i==1) df<-data.frame(w) else df<-cbind(df,w)
 }
 df<-cbind(df,as.vector(Freq))
-names(df)<-c(vpa,'Freq')
+names(df)<-c(vpa,"Freq")
 df
 }
 
-set.table<-function(dom,n,tab=1,type='cpt')
+set.table<-function(domain,n,tab=1,type = c("cpt", "experience", 
+    "fading"))
 {
+type <- match.arg(type)
+if(type!="cpt") stop("gRaven does not yet handle type =",type)
 if(is.data.frame(tab)) Freq<-tab$Freq else Freq<-as.vector(tab)
-if(is.null(dom$net))
+if(is.null(domain$net))
 {
-	if(is.null(dom$cptables)||is.null(dom$cptables[[n]]))
+	if(is.null(domain$cptables)||is.null(domain$cptables[[n]]))
 	{
-		vpa<-c(n,dom$parents[[n]])
-		allstates<-dom$states[vpa]
+		vpa<-c(n,domain$parents[[n]])
+		allstates<-domain$states[vpa]
 		nlev<-unlist(lapply(allstates,length))
 		leng<-prod(nlev)
-		dom$cptables[[n]]<-cpt(vpa,values=rep_len(Freq,leng),levels=allstates)
+		domain$cptables[[n]]<-cpt(vpa,values=rep_len(Freq,leng),levels=allstates)
 	} else {
-		dom$cptables[[n]][]<-Freq
+		domain$cptables[[n]][]<-Freq
 	}
 } else {
-	dom$net<-replaceCPT(dom$net,structure(list(Freq),names=n))
+	domain$net<-replaceCPT(domain$net,structure(list(Freq),names=n))
 }
 }
 
-compile.gRv<-function(object, ...)
+compile.gRaven<-function(object, ...)
 	{
 	if(!is.null(object$net)) warning("domain already compiled")
 # if any nodes are missing cptables, provide dummy table
@@ -142,92 +180,110 @@ compile.gRv<-function(object, ...)
 	object$net<-net
 	}
 
-check.compiled<-function(dom)
+check.compiled<-function(object)
 {
-	if(!all(dom$nodes%in%names(dom$cptables))) {
-		if(is.null(dom$cptables)) dom$cptables<-list()
-		for(n in dom$nodes) if(is.null(dom$cptables[[n]])) {set.table(dom,n,1)} #; cat('set table',dom,n,'\n')}
-		dom$net<-NULL
+	if(!all(object$nodes%in%names(object$cptables))) {
+		if(is.null(object$cptables)) object$cptables<-list()
+		for(n in object$nodes) if(is.null(object$cptables[[n]])) {set.table(object,n,1)}
+		object$net<-NULL
 	}
-	if(is.null(dom$net)) {compile.gRv(dom); cat('compiled',dom,'\n')}
+	if(is.null(object$net)) {compile.gRaven(object); cat("compiled",object,"\n")}
 }
 
-set.finding<-function(dom, node, finding)
+set.finding<-function(domain, node, finding)
 	{
-	check.compiled(dom)
-	dom$net$isPropagated<-FALSE
+	check.compiled(domain)
+	domain$net$isPropagated<-FALSE
 
 	if (is.list(finding)) finding<-unlist(finding)
-	if (length(finding) == 1) finding <- as.integer(finding == dom$states[[node]])
+	if (length(finding) == 1) finding <- as.integer(finding == domain$states[[node]])
 
-	cache<-dom$net$cache
+	cache<-domain$net$cache
 	if(is.null(cache)) cache<-list()
 
 # if it exists, empty evid into cache 
-	if(!is.null(dom$net$evidence))
+	if(!is.null(domain$net$evidence))
 			{
-			e<-dom$net$evidence$evi_weight
+			e<-domain$net$evidence$evi_weight
 			for(i in 1:length(e))
 				{
 				n<-names(dimnames(e[[i]]))
 				cache[[n]]<-as.vector(e[[i]])
 				}
-				dom$net<-retractEvidence(dom$net,dom$net$evi$nodes,propagate=FALSE)
+				domain$net<-retractEvidence(domain$net,domain$net$evi$nodes,propagate=FALSE)
 			}
 
 	cache[[node]]<-finding
-	dom$net$cache<-cache
+	domain$net$cache<-cache
 	}
 
-retract<-function(dom, nodes=dom$nodes)
+retract<-function(domain, nodes=domain$nodes)
 	{
-	if(is.null(dom$net)) return(invisible(NULL))
-	if(!is.null(dom$net$cache)) 
+	if(is.null(domain$net)) return(invisible(NULL))
+	if(!is.null(domain$net$cache)) 
 	{
-		nret<-intersect(nodes,names(dom$net$cache))
+		nret<-intersect(nodes,names(domain$net$cache))
 		if(length(nret)>0) {
-			dom$net$cache[nret]<-NULL
-			if(length(dom$net$cache)==0) dom$net$cache<-NULL
+			domain$net$cache[nret]<-NULL
+			if(length(domain$net$cache)==0) domain$net$cache<-NULL
 		}
 	}
-	if(!is.null(dom$net$evidence)) dom$net<-retractEvidence(dom$net,intersect(nodes,dom$net$evi$nodes),propagate=FALSE)
+	if(!is.null(domain$net$evidence)) domain$net<-retractEvidence(domain$net,intersect(nodes,domain$net$evi$nodes),propagate=FALSE)
 	}
 
-get.finding<-function(dom,nodes=dom$nodes, type = c("entered", "propagated"), namestates=FALSE)
+get.finding<-function(domain,nodes=domain$nodes, type = c("entered", "propagated"), namestates=FALSE)
 {
-type<-pmatch(type,c("entered", "propagated"))
-if(2%in%type) for(i in seq_along(dom$net$cache))
+# default is now to display both evid and cache -
+# to get only propagated, use type="propagated"
+type <- match.arg(type)
+if(type!="propagated") for(i in seq_along(domain$net$cache))
 {
-	node<-names(dom$net$cache)[i]
-	finding<-dom$net$cache[[i]]
-	names(finding)<-dom$states[[node]]
+	node<-names(domain$net$cache)[i]
+	finding<-domain$net$cache[[i]]
+	names(finding)<-get.states(domain,node)
 	if(node%in%nodes) if(namestates) {
- 	cat(paste0(node,':'),'cache\n')
+ 	cat(paste0(node,":"),"cache\n")
 	print(finding)
 	} else { 
-	cat(paste0(node,':'),finding,'cache\n')
+	cat(paste0(node,":"),finding,"cache\n")
 	}
 }
-if(1%in%type) for(i in seq_along(dom$net$evi$evi))
+for(i in seq_along(domain$net$evi$evi))
 {
-	node<-names(dimnames(dom$net$evi$evi[[i]]))
-	finding<-as.vector(dom$net$evi$evi[[i]])
-	names(finding)<-dom$states[[node]]
+	node<-names(dimnames(domain$net$evi$evi[[i]]))
+	finding<-as.vector(domain$net$evi$evi[[i]])
+	names(finding)<-get.states(domain,node)
 	if(node%in%nodes) if(namestates) {
- 	cat(paste0(node,':'),'evid\n')
+ 	cat(paste0(node,":"),"evid\n")
 	print(finding)
 	} else { 
-	cat(paste0(node,':'),finding,'evid\n')
+	cat(paste0(node,":"),finding,"evid\n")
 	}
 }
 }
 
-get.belief<-function (dom, n) 
+get.marginal<-function (domain, nodes, class = c("data.frame", "table", "ftable", 
+    "numeric")) 
 {
-    unlist(querygrain(dom$net, n, exclude = FALSE,evidence=dom$net$cache))
+    class <- match.arg(class)
+    if (class != "data.frame") 
+        stop("gRaven does not yet handle class =", class)
+    list(table = get.belief(domain,nodes))
 }
 
-propagate.gRv<-function(object, ...) 
+
+get.belief<-function(domain,nodes)
+{
+res <- as.data.frame.table(querygrain(domain$net, nodes, 
+        "joint", exclude = FALSE, evidence = domain$net$cache))
+res<-res[, c(nodes, "Freq")]
+for (node in nodes) {
+	res[[node]] <- get.states(domain, node)[as.integer(res[[node]])]
+	}
+res
+}
+
+propagate.gRaven<-function(object, ...) 
 	{
 	check.compiled(object)
 	if(!is.null(object$net$cache))
@@ -240,60 +296,61 @@ propagate.gRv<-function(object, ...)
 	object$net<-net1
 	}
 
-get.normalization.constant<-function(dom,log=FALSE) 
+get.normalization.constant<-function(domain,log=FALSE) 
 	{
-	if(!is.null(dom$net$cache))
+	if(!is.null(domain$net$cache))
 		{
-		if(!is.null(dom$net$evidence))
+		if(!is.null(domain$net$evidence))
 			{
-			e<-dom$net$evidence$evi_weight
+			e<-domain$net$evidence$evi_weight
 			for(i in 1:length(e))
 				{
 				n<-names(dimnames(e[[i]]))
-				dom$net$cache[[n]]<-as.vector(e[[i]])
+				domain$net$cache[[n]]<-as.vector(e[[i]])
 				}
-			dom$net$evidence<-NULL
+			domain$net$evidence<-NULL
 			}
-		p<-pEvidence(dom$net,evidence=dom$net$cache)		
-		} else if(is.null(dom$net$evidence)) {
+		p<-pEvidence(domain$net,evidence=domain$net$cache)		
+		} else if(is.null(domain$net$evidence)) {
 		p<-1
 		} else {
-		if(dom$net$isPropagated) 
-			p<-pEvidence(dom$net) else
+		if(domain$net$isPropagated) 
+			p<-pEvidence(domain$net) else
 			{
-			net1<-propagate(dom$net) 
+			net1<-propagate(domain$net) 
 			p<-pEvidence(net1)
 			}
 		} 
 	if(log) log(p) else p
 	}
 
-get.nodes<-function(dom) dom$nodes
+get.nodes<-function(domain) domain$nodes
 
-get.parents<-function(dom,n)
+get.parents<-function(domain, n, type = "parents")
 {
-dom$parents[[n]]
+if(type!="parents") stop("gRaven does not yet handle type =",type)
+domain$parents[[n]]
 }
     
-simulate.gRv <- function(object, nsim = 1, seed = NULL, ...)
+simulate.gRaven <- function(object, nsim = 1, seed = NULL, ...)
 	{
 	simulate.grain(object$net, nsim = nsim, seed = NULL, ...)   
 	}
 
-triangulate.gRv<-function(object, ...) {}
+triangulate.gRaven<-function(object, ...) {}
 
-compress<-function(dom) {1}
+compress<-function(domain) {1}
 
 list.domains<-function (print = TRUE) 
 {
 	domains <- NULL
 	lsa<-ls(all.names = TRUE, envir = .GlobalEnv)
-	for (x in lsa) if (is(get(x), "gRv")) domains <- c(domains, x)
+	for (x in lsa) if (is(get(x), "gRaven")) domains <- c(domains, x)
 	if(print) cat(domains,fill=60)
 	for(v in lsa) if(is.list(get(v))&&"domains"%in%names(get(v))) 
 		{
-		if(print) cat(paste0(' ',v,'$domains$'),names(get(v)$domains),'\n')
-		domains<-c(domains,paste0(v,'$domains$',names(get(v)$domains)))
+		if(print) cat(paste0(" ",v,"$domains$"),names(get(v)$domains),"\n")
+		domains<-c(domains,paste0(v,"$domains$",names(get(v)$domains)))
 		}
 invisible(domains)
 }

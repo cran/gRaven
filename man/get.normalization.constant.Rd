@@ -3,10 +3,10 @@
 \title{Get the normalisation constant of a gRaven domain}
 \description{Get the normalisation constant of a gRaven domain}
 \usage{
-get.normalization.constant(dom, log = FALSE)
+get.normalization.constant(domain, log = FALSE)
 }
 \arguments{
-  \item{dom}{
+  \item{domain}{
 name of a gRaven domain
 }
   \item{log}{
@@ -19,14 +19,14 @@ logical, should constant be returned on log scale?
 yn <- c("yes","no")
 chest<-hugin.domain()
 
-add.node(chest,"asia",yn)
-add.node(chest,"tub",yn)
-add.node(chest,"smoke",yn)
-add.node(chest,"lung",yn)
-add.node(chest,"bronc",yn)
-add.node(chest,"either",yn)
-add.node(chest,"xray",yn)
-add.node(chest,"dysp",yn)
+add.node(chest,"asia",states=yn)
+add.node(chest,"tub",states=yn)
+add.node(chest,"smoke",states=yn)
+add.node(chest,"lung",states=yn)
+add.node(chest,"bronc",states=yn)
+add.node(chest,"either",states=yn)
+add.node(chest,"xray",states=yn)
+add.node(chest,"dysp",states=yn)
 
 add.edge(chest,"tub","asia")
 add.edge(chest,"lung","smoke")

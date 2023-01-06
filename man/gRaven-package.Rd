@@ -5,7 +5,6 @@
 \title{\packageTitle{gRaven}}
 \description{\packageDescription{gRaven}}
 \author{
-\packageAuthor{gRaven}
 Maintainer: \packageMaintainer{gRaven}
 }
 \examples{
@@ -15,14 +14,14 @@ rm(list=ls(all=TRUE))
 yn <- c("yes","no")
 chest<-hugin.domain()
 
-add.node(chest,"asia",yn)
-add.node(chest,"tub",yn)
-add.node(chest,"smoke",yn)
-add.node(chest,"lung",yn)
-add.node(chest,"bronc",yn)
-add.node(chest,"either",yn)
-add.node(chest,"xray",yn)
-add.node(chest,"dysp",yn)
+add.node(chest,"asia",states=yn)
+add.node(chest,"tub",states=yn)
+add.node(chest,"smoke",states=yn)
+add.node(chest,"lung",states=yn)
+add.node(chest,"bronc",states=yn)
+add.node(chest,"either",states=yn)
+add.node(chest,"xray",states=yn)
+add.node(chest,"dysp",states=yn)
 
 add.edge(chest,"tub","asia")
 add.edge(chest,"lung","smoke")
@@ -48,10 +47,10 @@ chest$states
 sapply(get.nodes(chest),function(x) get.parents(chest,x))
 compile(chest)
 chest
-get.belief(chest,'asia')
-get.belief(chest,'tub')
-get.belief(chest,'lung')
-get.belief(chest,'bronc')
+get.belief(chest,"asia")
+get.belief(chest,"tub")
+get.belief(chest,"lung")
+get.belief(chest,"bronc")
 sapply(get.nodes(chest),function(x) get.belief(chest,x)) 
 
 c2<-clone.domain(chest)
@@ -60,10 +59,10 @@ set.finding(chest,"asia","yes")
 set.finding(chest,"dysp","yes")
 propagate(chest)
 
-get.belief(chest,'asia')
-get.belief(chest,'tub')
-get.belief(chest,'lung')
-get.belief(chest,'bronc')
+get.belief(chest,"asia")
+get.belief(chest,"tub")
+get.belief(chest,"lung")
+get.belief(chest,"bronc")
 
 pEvidence(chest$net)
 get.normalization.constant(chest)
