@@ -166,7 +166,7 @@ if(is.null(domain$net))
 
 compile.gRaven<-function(object, ...)
 	{
-	if(!is.null(object$net)) warning("domain already compiled")
+	if(!is.null(object$net)) warning("domain already compiled: net is being re-initialised")
 # if any nodes are missing cptables, provide dummy table
 	for(n in setdiff(object$nodes,names(object$cptables))) {
 		vpa<-c(n,object$parents[[n]])
@@ -201,7 +201,7 @@ set.finding<-function(domain, node, finding)
 	cache<-domain$net$cache
 	if(is.null(cache)) cache<-list()
 
-# if it exists, empty evid into cache 
+# if it exists, empty evid into cache (E dominates over existing C if any, but new evidence dominates E)
 	if(!is.null(domain$net$evidence))
 			{
 			e<-domain$net$evidence$evi_weight
@@ -231,56 +231,77 @@ retract<-function(domain, nodes=domain$nodes)
 	if(!is.null(domain$net$evidence)) domain$net<-retractEvidence(domain$net,intersect(nodes,domain$net$evi$nodes),propagate=FALSE)
 	}
 
-get.finding<-function(domain,nodes=domain$nodes, type = c("entered", "propagated"), namestates=FALSE)
+get.finding<-function (domain, nodes = domain$nodes, type = c("entered", "propagated"), 
+    namestates = FALSE) 
 {
-# default is now to display both evid and cache -
-# to get only propagated, use type="propagated"
-type <- match.arg(type)
-if(type!="propagated") for(i in seq_along(domain$net$cache))
-{
-	node<-names(domain$net$cache)[i]
-	finding<-domain$net$cache[[i]]
-	names(finding)<-get.states(domain,node)
-	if(node%in%nodes) if(namestates) {
- 	cat(paste0(node,":"),"cache\n")
-	print(finding)
-	} else { 
-	cat(paste0(node,":"),finding,"cache\n")
+    type <- match.arg(type)
+    res <- list()
+    for (i in seq_along(domain$net$evi$evi)) {
+        node <- names(dimnames(domain$net$evi$evi[[i]]))
+        finding <- as.vector(domain$net$evi$evi[[i]])
+        names(finding) <- get.states(domain, node)
+        if (node %in% nodes) 
+		{            
+		if (namestates) {
+                cat(paste0(node, ":"), "evid\n")
+                print(finding)
+            } else {
+                cat(paste0(node, ":"), finding, "evid\n")
+            }
+		res[[node]] <- finding
 	}
-}
-for(i in seq_along(domain$net$evi$evi))
-{
-	node<-names(dimnames(domain$net$evi$evi[[i]]))
-	finding<-as.vector(domain$net$evi$evi[[i]])
-	names(finding)<-get.states(domain,node)
-	if(node%in%nodes) if(namestates) {
- 	cat(paste0(node,":"),"evid\n")
-	print(finding)
-	} else { 
-	cat(paste0(node,":"),finding,"evid\n")
-	}
-}
+    }
+    if (type != "propagated") 
+        for (i in seq_along(domain$net$cache)) {
+            node <- names(domain$net$cache)[i]
+            finding <- domain$net$cache[[i]]
+            names(finding) <- get.states(domain, node)
+            if (node %in% nodes) 
+		{
+             if (namestates) {
+                  cat(paste0(node, ":"), "cache\n")
+                  print(finding)
+             } else {
+                  cat(paste0(node, ":"), finding, "cache\n")
+             }
+             res[[node]] <- finding
+		}
+        }
+	res<-if (length(res) == 1) res[[1]] else 
+		if(length(res)==0 & length(nodes)==1) structure(rep(1,length(get.states(domain,nodes))),names=get.states(domain,nodes)) else 
+		res
+    invisible(res)
 }
 
 get.marginal<-function (domain, nodes, class = c("data.frame", "table", "ftable", 
     "numeric")) 
 {
-    class <- match.arg(class)
-    if (class != "data.frame") 
-        stop("gRaven does not yet handle class =", class)
-    list(table = get.belief(domain,nodes))
+class <- match.arg(class)
+z<-querygrain(domain$net, nodes, "joint", exclude = FALSE, evidence = domain$net$cache)
+z<-aperm(z,nodes)
+res<-switch(class,
+data.frame={
+	res <- as.data.frame.table(z)
+	res<-res[, c(nodes, "Freq")]
+	for (node in nodes) {
+		res[[node]] <- get.states(domain, node)[as.integer(res[[node]])]
+		}
+      res},
+table=z,
+ftable=if(length(nodes)>1) ftable(z, row.vars = nodes[1:floor((length(nodes)+1)/2)]) else z,
+numeric=as.vector(z)
+)
+list(table = res)
 }
-
 
 get.belief<-function(domain,nodes)
 {
-res <- as.data.frame.table(querygrain(domain$net, nodes, 
-        "joint", exclude = FALSE, evidence = domain$net$cache))
-res<-res[, c(nodes, "Freq")]
-for (node in nodes) {
-	res[[node]] <- get.states(domain, node)[as.integer(res[[node]])]
-	}
-res
+if(length(nodes)>1)
+{
+return(get.marginal(domain,nodes))
+} else {
+structure(as.vector(querygrain(domain$net, nodes, exclude=FALSE, evidence = domain$net$cache)[[1]]),names=get.states(domain,nodes))
+}
 }
 
 propagate.gRaven<-function(object, ...) 
@@ -301,6 +322,7 @@ get.normalization.constant<-function(domain,log=FALSE)
 	if(!is.null(domain$net$cache))
 		{
 		if(!is.null(domain$net$evidence))
+# C&E (if both hold evidence on a node, E dominates)
 			{
 			e<-domain$net$evidence$evi_weight
 			for(i in 1:length(e))
@@ -312,13 +334,14 @@ get.normalization.constant<-function(domain,log=FALSE)
 			}
 		p<-pEvidence(domain$net,evidence=domain$net$cache)		
 		} else if(is.null(domain$net$evidence)) {
+# C only
 		p<-1
 		} else {
+# E only or neither
 		if(domain$net$isPropagated) 
 			p<-pEvidence(domain$net) else
 			{
-			net1<-propagate(domain$net) 
-			p<-pEvidence(net1)
+			p<-pEvidence(propagate(domain$net))
 			}
 		} 
 	if(log) log(p) else p
