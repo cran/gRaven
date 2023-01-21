@@ -187,7 +187,7 @@ check.compiled<-function(object)
 		for(n in object$nodes) if(is.null(object$cptables[[n]])) {set.table(object,n,1)}
 		object$net<-NULL
 	}
-	if(is.null(object$net)) {compile.gRaven(object); cat("compiled",object,"\n")}
+	if(is.null(object$net)) {compile.gRaven(object); cat("now compiled\n")}
 }
 
 set.finding<-function(domain, node, finding)

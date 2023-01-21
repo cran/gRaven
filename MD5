@@ -1,11 +1,11 @@
-3344e05580d7b8f806c9fb8f1a801f5d *DESCRIPTION
+78f2a387e72104aae1c3b2ee6735117e *DESCRIPTION
 2d49b03216c0753fd22fe8a52e58c779 *NAMESPACE
 0b1bc605d67cb98d30621621f8173754 *R/get.stuff.R
-f65f94588600e6dffa0a71e5523efb51 *R/graven.R
+9f24d9b47b0c67b6e9c1852f72ac731c *R/graven.R
 e37032e5ad383af863728befc14dcf27 *R/mapconfig.R
 4f5ab4fb671c85aeaeabbb8f03708ff5 *R/summary.gRaven.R
 5275664991246d1fc8200a9d560968c0 *README.md
-4d14fa3234c7200de85a77b722241219 *build/partial.rdb
+bd866a7ddeca823df55af89ad7240baa *build/partial.rdb
 25c48a86c440e6a4fe8017ac63b80356 *demo/00Index
 740d06627960827cd1ac1ed5a6916f3e *demo/chest.R
 183ce16b9c2921a3773476d2ab8bda84 *demo/chest.setup.R
