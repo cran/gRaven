@@ -1,11 +1,11 @@
-78f2a387e72104aae1c3b2ee6735117e *DESCRIPTION
+b30ac166d9ba3b4cf27e2a9833fc0360 *DESCRIPTION
 2d49b03216c0753fd22fe8a52e58c779 *NAMESPACE
 0b1bc605d67cb98d30621621f8173754 *R/get.stuff.R
-9f24d9b47b0c67b6e9c1852f72ac731c *R/graven.R
-e37032e5ad383af863728befc14dcf27 *R/mapconfig.R
+4c567524ded1fe869a737db9eaa36b42 *R/graven.R
+4d5393fedf28021818498fd73d77da4f *R/mapconfig.R
 4f5ab4fb671c85aeaeabbb8f03708ff5 *R/summary.gRaven.R
 5275664991246d1fc8200a9d560968c0 *README.md
-bd866a7ddeca823df55af89ad7240baa *build/partial.rdb
+3c39ff4efa43c6eb756b6ebce55f8f54 *build/partial.rdb
 25c48a86c440e6a4fe8017ac63b80356 *demo/00Index
 740d06627960827cd1ac1ed5a6916f3e *demo/chest.R
 183ce16b9c2921a3773476d2ab8bda84 *demo/chest.setup.R
@@ -24,7 +24,7 @@ a4374e96bf01d0c4e6a277210fe8f4e7 *man/initialize.domain.Rd
 eb9bea59c4a54e266fa44c26ddcb83a3 *man/list.domains.Rd
 510899e391761eb70669f35708b1586c *man/map.configurations.Rd
 de09b34f6c64232e5c0d211a089dee2b *man/print.gRaven.Rd
-45bc61610d993e9dff760a34664ad507 *man/propagate.gRaven.Rd
+176bdb423b2accf42ac0905bd9af012c *man/propagate.gRaven.Rd
 72a404ecb85293eff66f0ff9ef351e2d *man/set.finding.Rd
 287f94305e1a45e3fbf25a7f57e6e017 *man/set.table.Rd
 3e8edf2741992d14874af026fbe6cd49 *man/simulate.gRaven.Rd

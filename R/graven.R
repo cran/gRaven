@@ -357,7 +357,7 @@ domain$parents[[n]]
     
 simulate.gRaven <- function(object, nsim = 1, seed = NULL, ...)
 	{
-	simulate.grain(object$net, nsim = nsim, seed = NULL, ...)   
+	simulate(object$net, nsim = nsim, seed = NULL)   
 	}
 
 triangulate.gRaven<-function(object, ...) {}

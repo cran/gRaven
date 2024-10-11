@@ -41,7 +41,7 @@ map.configurations <-function (domain, nodes, pmin)
   while (totalp < 1-pmin){
   
     ## Simulate batch of n configurations, keep only relevant nodes
-    sg <- simulate.grain(domain$net, n)
+    sg <- simulate(domain$net, n)
     sg <- subset(sg, select = nodes) 
     
     ## Change state values from factors to provided state values
